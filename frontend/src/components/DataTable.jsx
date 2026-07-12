@@ -68,20 +68,20 @@ export default function DataTable({
   };
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-lg">
+    <div className="bg-white border border-[#E2E8F0] rounded-[6px] overflow-hidden shadow-sm">
       {/* Table Header Controls */}
       {searchKey && (
-        <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+        <div className="p-4 border-b border-[#E2E8F0] flex justify-between items-center bg-[#F8F9FA]/50">
           <div className="relative w-72">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search className="h-4 w-4 text-zinc-500" />
+              <Search className="h-4 w-4 text-gray-400" />
             </span>
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder={searchPlaceholder}
-              className="w-full pl-9 pr-4 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+              className="w-full pl-9 pr-4 py-1.5 bg-white border border-[#E2E8F0] rounded-[6px] text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#714B67] transition-colors"
             />
           </div>
         </div>
@@ -91,17 +91,17 @@ export default function DataTable({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-zinc-800 bg-zinc-950 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <tr className="bg-[#F8F9FA] border-b border-[#E2E8F0] text-[11px] font-bold uppercase tracking-wider text-gray-500">
               {columns.map((col) => (
                 <th
                   key={col.header}
                   onClick={() => handleSort(col.accessor, col.sortable)}
-                  className={`px-6 py-4 ${col.sortable ? 'cursor-pointer hover:text-white select-none' : ''}`}
+                  className={`px-6 py-4 ${col.sortable ? 'cursor-pointer hover:text-[#714B67] select-none' : ''}`}
                 >
                   <div className="flex items-center gap-1">
                     {col.header}
                     {col.sortable && sortConfig.key === col.accessor && (
-                      sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                      sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3 text-[#714B67]" /> : <ChevronDown className="h-3 w-3 text-[#714B67]" />
                     )}
                   </div>
                 </th>
@@ -109,16 +109,16 @@ export default function DataTable({
               {actions && <th className="px-6 py-4 text-right">Actions</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800 text-sm text-zinc-300">
+          <tbody className="divide-y divide-gray-100 text-[13px] text-gray-800">
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="text-center py-10 text-zinc-500">
+                <td colSpan={columns.length + (actions ? 1 : 0)} className="text-center py-10 text-gray-400">
                   No records found.
                 </td>
               </tr>
             ) : (
               paginatedData.map((row, idx) => (
-                <tr key={row.id || idx} className="hover:bg-zinc-800/35 transition-colors">
+                <tr key={row.id || idx} className="hover:bg-[#F8F9FA] transition-colors cursor-pointer group">
                   {columns.map((col) => {
                     const cellValue = typeof col.accessor === 'function'
                       ? col.accessor(row)
@@ -143,27 +143,27 @@ export default function DataTable({
 
       {/* Pagination Footer */}
       {totalPages > 1 && (
-        <div className="p-4 border-t border-zinc-800 bg-zinc-950/30 flex justify-between items-center text-xs text-zinc-400">
+        <div className="p-4 border-t border-[#E2E8F0] bg-[#F8F9FA] flex justify-between items-center text-[13px] text-gray-500">
           <div>
-            Showing <span className="font-semibold text-zinc-200">{(currentPage - 1) * pageSize + 1}</span> to{' '}
-            <span className="font-semibold text-zinc-200">
+            Showing <span className="font-semibold text-gray-700">{(currentPage - 1) * pageSize + 1}</span> to{' '}
+            <span className="font-semibold text-gray-700">
               {Math.min(currentPage * pageSize, processedData.length)}
             </span>{' '}
-            of <span className="font-semibold text-zinc-200">{processedData.length}</span> entries
+            of <span className="font-semibold text-gray-700">{processedData.length}</span> entries
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="p-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-800 text-zinc-300 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              className="p-1.5 rounded border border-[#E2E8F0] bg-white hover:bg-[#F8F9FA] text-gray-600 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-sm"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-zinc-300 font-medium">Page {currentPage} of {totalPages}</span>
+            <span className="text-gray-700 font-medium">Page {currentPage} of {totalPages}</span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="p-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-800 text-zinc-300 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              className="p-1.5 rounded border border-[#E2E8F0] bg-white hover:bg-[#F8F9FA] text-gray-600 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-sm"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

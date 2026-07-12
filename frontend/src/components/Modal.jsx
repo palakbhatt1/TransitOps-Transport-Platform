@@ -20,25 +20,25 @@ export default function Modal({ isOpen, onClose, title, children }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" 
         onClick={onClose}
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-10 scale-100 transition-all transform animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl bg-white border border-[#E2E8F0] rounded-[12px] shadow-2xl overflow-hidden z-10 scale-100 transition-all transform animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-950/50">
-          <h3 className="text-lg font-bold text-zinc-100">{title}</h3>
+        <div className="flex items-center justify-between px-8 py-5 border-b border-[#E2E8F0] bg-white">
+          <h3 className="text-lg font-bold text-[#714B67]">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 max-h-[80vh] overflow-y-auto bg-zinc-900 text-zinc-200">
+        <div className="px-8 py-6 max-h-[85vh] overflow-y-auto bg-white text-gray-800">
           {children}
         </div>
       </div>
