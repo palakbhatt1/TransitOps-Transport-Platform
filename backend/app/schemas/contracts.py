@@ -79,6 +79,33 @@ class MaintenanceLog(MaintenanceLogBase):
     model_config = ConfigDict(from_attributes=True)
     id: str
 
+class FuelLogBase(BaseModel):
+    vehicle_id: str
+    liters: float
+    cost: float
+    odometer: int
+    date: datetime
+    notes: Optional[str] = None
+
+class FuelLog(FuelLogBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+
+class ExpenseBase(BaseModel):
+    vehicle_id: str
+    category: str
+    cost: float
+    date: datetime
+    notes: Optional[str] = None
+
+class Expense(ExpenseBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+
+class FinanceLogsResponse(BaseModel):
+    fuel_logs: list[FuelLog]
+    expenses: list[Expense]
+
 class DashboardKPIs(BaseModel):
     active_vehicles: int
     available_vehicles: int

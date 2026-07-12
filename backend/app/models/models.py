@@ -57,3 +57,25 @@ class MaintenanceLogDB(Base):
     cost = Column(Float, nullable=False)
     opened_at = Column(DateTime, nullable=False)
     closed_at = Column(DateTime, nullable=True)
+
+class FuelLogDB(Base):
+    __tablename__ = "fuel_logs"
+
+    id = Column(String, primary_key=True, index=True)
+    vehicle_id = Column(String, ForeignKey("vehicles.id"), nullable=False)
+    liters = Column(Float, nullable=False)
+    cost = Column(Float, nullable=False)
+    odometer = Column(Integer, nullable=False)
+    date = Column(DateTime, nullable=False)
+    notes = Column(String, nullable=True)
+
+class ExpenseDB(Base):
+    __tablename__ = "expenses"
+
+    id = Column(String, primary_key=True, index=True)
+    vehicle_id = Column(String, ForeignKey("vehicles.id"), nullable=False)
+    category = Column(String, nullable=False)
+    cost = Column(Float, nullable=False)
+    date = Column(DateTime, nullable=False)
+    notes = Column(String, nullable=True)
+
