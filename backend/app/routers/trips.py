@@ -94,6 +94,82 @@ def get_trip(id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Trip not found")
     return trip
 
+@router.put("/{id}", response_model=Trip)
+def update_trip(id: str, trip: TripBase, db: Session = Depends(get_db)):
+    """Update trip details."""
+    db_trip = db.query(TripDB).filter(TripDB.id == id).first()
+    if not db_trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    if not trip.origin.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_ORIGIN",
+                "message": "Origin cannot be empty or blank space",
+                "field": "origin",
+            },
+        )
+    if not trip.destination.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_DESTINATION",
+                "message": "Destination cannot be empty or blank space",
+                "field": "destination",
+            },
+        )
+    if trip.cargo_weight_kg <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_CARGO_WEIGHT",
+                "message": "Cargo weight must be greater than 0 kg",
+                "field": "cargo_weight_kg",
+            },
+        )
+
+    # Verify vehicle and driver exist
+    vehicle = db.query(VehicleDB).filter(VehicleDB.id == trip.vehicle_id).first()
+    if not vehicle:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "VEHICLE_NOT_FOUND",
+                "message": f"Vehicle with ID {trip.vehicle_id} does not exist",
+                "field": "vehicle_id",
+            },
+        )
+
+    driver = db.query(DriverDB).filter(DriverDB.id == trip.driver_id).first()
+    if not driver:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "DRIVER_NOT_FOUND",
+                "message": f"Driver with ID {trip.driver_id} does not exist",
+                "field": "driver_id",
+            },
+        )
+
+    db_trip.vehicle_id = trip.vehicle_id
+    db_trip.driver_id = trip.driver_id
+    db_trip.origin = trip.origin
+    db_trip.destination = trip.destination
+    db_trip.cargo_weight_kg = trip.cargo_weight_kg
+    db_trip.status = trip.status.value
+    db_trip.dispatched_at = trip.dispatched_at
+    db_trip.completed_at = trip.completed_at
+
+    db.commit()
+    db.refresh(db_trip)
+    return db_trip
+
 @router.post("/{id}/dispatch", response_model=Trip)
 def dispatch_trip(id: str, db: Session = Depends(get_db)):
     """Dispatch a trip and update vehicle and driver status to active."""
