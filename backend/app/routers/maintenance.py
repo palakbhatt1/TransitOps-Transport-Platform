@@ -1,20 +1,25 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends
+from typing import List, Optional
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from app.database.database import get_db
+from app.models.models import MaintenanceLogDB, VehicleDB
 from app.schemas.contracts import MaintenanceLog, MaintenanceLogBase, VehicleStatus
-from app.mock_db import mock_maintenance_db, mock_vehicles_db
 import uuid
 from datetime import datetime
 
 router = APIRouter()
 
+class CloseMaintenanceRequest(BaseModel):
+    cost: float
+
 @router.get("/", response_model=List[MaintenanceLog])
-def get_maintenance_logs():
-    return mock_maintenance_db
+def get_maintenance_logs(db: Session = Depends(get_db)):
     """Retrieve all logged maintenance logs."""
+    return db.query(MaintenanceLogDB).all()
 
 @router.post("/", response_model=MaintenanceLog)
-def open_maintenance_log(log: MaintenanceLogBase):
-    # Strict input validations
+def open_maintenance_log(log: MaintenanceLogBase, db: Session = Depends(get_db)):
     """Open a new maintenance log and set vehicle to in_shop status."""
     if not log.service_type.strip():
         raise HTTPException(
@@ -36,8 +41,9 @@ def open_maintenance_log(log: MaintenanceLogBase):
                 "field": "cost"
             }
         )
+        
     # Verify vehicle exists
-    vehicle = next((v for v in mock_vehicles_db if v.id == log.vehicle_id), None)
+    vehicle = db.query(VehicleDB).filter(VehicleDB.id == log.vehicle_id).first()
     if not vehicle:
         raise HTTPException(
             status_code=400,
@@ -50,7 +56,7 @@ def open_maintenance_log(log: MaintenanceLogBase):
         )
 
     # Double check if vehicle is already in maintenance
-    if vehicle.status == VehicleStatus.in_shop:
+    if vehicle.status == VehicleStatus.in_shop.value:
         raise HTTPException(
             status_code=400,
             detail={
@@ -62,7 +68,7 @@ def open_maintenance_log(log: MaintenanceLogBase):
         )
 
     # If vehicle is on a trip, block scheduling maintenance until trip is completed
-    if vehicle.status == VehicleStatus.on_trip:
+    if vehicle.status == VehicleStatus.on_trip.value:
         raise HTTPException(
             status_code=400,
             detail={
@@ -73,24 +79,24 @@ def open_maintenance_log(log: MaintenanceLogBase):
             }
         )
 
-    new_log = MaintenanceLog(
+    new_log = MaintenanceLogDB(
         id=str(uuid.uuid4()),
         vehicle_id=log.vehicle_id,
         service_type=log.service_type,
         cost=log.cost,
         opened_at=datetime.utcnow()
     )
-    mock_maintenance_db.append(new_log)
+    db.add(new_log)
     
     # Set vehicle status to 'in_shop'
-    vehicle.status = VehicleStatus.in_shop
+    vehicle.status = VehicleStatus.in_shop.value
     
+    db.commit()
+    db.refresh(new_log)
     return new_log
 
-@router.put("/{id}/close", response_model=MaintenanceLog)
-def close_maintenance_log(id: str):
-    log = next((m for m in mock_maintenance_db if m.id == id), None)
-    """Close an open maintenance log and set vehicle status back to available."""
+def _close_log(id: str, db: Session, cost: Optional[float] = None):
+    log = db.query(MaintenanceLogDB).filter(MaintenanceLogDB.id == id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Maintenance log not found")
     
@@ -105,10 +111,24 @@ def close_maintenance_log(id: str):
         )
         
     log.closed_at = datetime.utcnow()
+    if cost is not None:
+        log.cost = cost
     
     # Set vehicle status back to 'available' if it is currently 'in_shop'
-    vehicle = next((v for v in mock_vehicles_db if v.id == log.vehicle_id), None)
-    if vehicle and vehicle.status == VehicleStatus.in_shop:
-        vehicle.status = VehicleStatus.available
-    
+    vehicle = db.query(VehicleDB).filter(VehicleDB.id == log.vehicle_id).first()
+    if vehicle and vehicle.status == VehicleStatus.in_shop.value:
+        vehicle.status = VehicleStatus.available.value
+        
+    db.commit()
+    db.refresh(log)
     return log
+
+@router.put("/{id}/close", response_model=MaintenanceLog)
+def close_maintenance_log_put(id: str, db: Session = Depends(get_db)):
+    """Close an open maintenance log (PUT, used by unit tests)."""
+    return _close_log(id, db)
+
+@router.post("/{id}/close", response_model=MaintenanceLog)
+def close_maintenance_log_post(id: str, payload: CloseMaintenanceRequest, db: Session = Depends(get_db)):
+    """Close an open maintenance log and set the final invoice cost (POST, used by frontend)."""
+    return _close_log(id, db, cost=payload.cost)

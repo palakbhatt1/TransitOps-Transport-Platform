@@ -1,20 +1,21 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
+from sqlalchemy.orm import Session
+from app.database.database import get_db
+from app.models.models import TripDB, VehicleDB, DriverDB
 from app.schemas.contracts import Trip, TripBase, TripStatus, VehicleStatus, DriverStatus
-from app.mock_db import mock_trips_db, mock_vehicles_db, mock_drivers_db
 import uuid
 from datetime import datetime
 
 router = APIRouter()
 
 @router.get("/", response_model=List[Trip])
-def get_trips():
-    return mock_trips_db
+def get_trips(db: Session = Depends(get_db)):
     """Retrieve all scheduled and dispatched trips from the system."""
+    return db.query(TripDB).all()
 
 @router.post("/", response_model=Trip)
-def create_trip(trip: TripBase):
-    # Strict input validations
+def create_trip(trip: TripBase, db: Session = Depends(get_db)):
     """Create a new trip in draft status with input validations."""
     if not trip.origin.strip():
         raise HTTPException(
@@ -46,8 +47,9 @@ def create_trip(trip: TripBase):
                 "field": "cargo_weight_kg"
             }
         )
+        
     # Verify vehicle and driver exist
-    vehicle = next((v for v in mock_vehicles_db if v.id == trip.vehicle_id), None)
+    vehicle = db.query(VehicleDB).filter(VehicleDB.id == trip.vehicle_id).first()
     if not vehicle:
         raise HTTPException(
             status_code=400,
@@ -59,7 +61,7 @@ def create_trip(trip: TripBase):
             }
         )
         
-    driver = next((d for d in mock_drivers_db if d.id == trip.driver_id), None)
+    driver = db.query(DriverDB).filter(DriverDB.id == trip.driver_id).first()
     if not driver:
         raise HTTPException(
             status_code=400,
@@ -71,29 +73,35 @@ def create_trip(trip: TripBase):
             }
         )
 
-    new_trip = Trip(
+    new_trip = TripDB(
         id=str(uuid.uuid4()),
-        **trip.model_dump()
+        vehicle_id=trip.vehicle_id,
+        driver_id=trip.driver_id,
+        origin=trip.origin,
+        destination=trip.destination,
+        cargo_weight_kg=trip.cargo_weight_kg,
+        status=TripStatus.draft.value
     )
-    new_trip.status = TripStatus.draft
-    mock_trips_db.append(new_trip)
+    db.add(new_trip)
+    db.commit()
+    db.refresh(new_trip)
     return new_trip
 
 @router.get("/{id}", response_model=Trip)
-def get_trip(id: str):
-    trip = next((t for t in mock_trips_db if t.id == id), None)
+def get_trip(id: str, db: Session = Depends(get_db)):
+    trip = db.query(TripDB).filter(TripDB.id == id).first()
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     return trip
 
 @router.post("/{id}/dispatch", response_model=Trip)
-def dispatch_trip(id: str):
-    trip = next((t for t in mock_trips_db if t.id == id), None)
+def dispatch_trip(id: str, db: Session = Depends(get_db)):
     """Dispatch a trip and update vehicle and driver status to active."""
+    trip = db.query(TripDB).filter(TripDB.id == id).first()
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     
-    if trip.status != TripStatus.draft:
+    if trip.status != TripStatus.draft.value:
         raise HTTPException(
             status_code=400,
             detail={
@@ -105,33 +113,33 @@ def dispatch_trip(id: str):
         )
 
     # 1. Fetch Vehicle, ensure status == available
-    vehicle = next((v for v in mock_vehicles_db if v.id == trip.vehicle_id), None)
+    vehicle = db.query(VehicleDB).filter(VehicleDB.id == trip.vehicle_id).first()
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle assigned to trip not found")
         
-    if vehicle.status != VehicleStatus.available:
+    if vehicle.status != VehicleStatus.available.value:
         raise HTTPException(
             status_code=400,
             detail={
                 "error": "Validation failed",
                 "code": "VEHICLE_UNAVAILABLE",
-                "message": f"Vehicle {vehicle.registration_number} is currently {vehicle.status.value}",
+                "message": f"Vehicle {vehicle.registration_number} is currently {vehicle.status}",
                 "field": "vehicle_id"
             }
         )
 
     # 2. Fetch Driver, ensure status == available
-    driver = next((d for d in mock_drivers_db if d.id == trip.driver_id), None)
+    driver = db.query(DriverDB).filter(DriverDB.id == trip.driver_id).first()
     if not driver:
         raise HTTPException(status_code=404, detail="Driver assigned to trip not found")
         
-    if driver.status != DriverStatus.available:
+    if driver.status != DriverStatus.available.value:
         raise HTTPException(
             status_code=400,
             detail={
                 "error": "Validation failed",
                 "code": "DRIVER_UNAVAILABLE",
-                "message": f"Driver {driver.name} is currently {driver.status.value}",
+                "message": f"Driver {driver.name} is currently {driver.status}",
                 "field": "driver_id"
             }
         )
@@ -173,7 +181,10 @@ def dispatch_trip(id: str):
         )
 
     # 4. Vehicle/Driver double assignment check (sanity check, covered by status but good practice)
-    active_vehicle_trip = next((t for t in mock_trips_db if t.vehicle_id == vehicle.id and t.status == TripStatus.dispatched), None)
+    active_vehicle_trip = db.query(TripDB).filter(
+        TripDB.vehicle_id == vehicle.id,
+        TripDB.status == TripStatus.dispatched.value
+    ).first()
     if active_vehicle_trip:
          raise HTTPException(
             status_code=400,
@@ -185,7 +196,10 @@ def dispatch_trip(id: str):
             }
         )
 
-    active_driver_trip = next((t for t in mock_trips_db if t.driver_id == driver.id and t.status == TripStatus.dispatched), None)
+    active_driver_trip = db.query(TripDB).filter(
+        TripDB.driver_id == driver.id,
+        TripDB.status == TripStatus.dispatched.value
+    ).first()
     if active_driver_trip:
          raise HTTPException(
             status_code=400,
@@ -197,21 +211,23 @@ def dispatch_trip(id: str):
             }
         )
 
-    # Atomic-like update (in-memory mutation)
-    trip.status = TripStatus.dispatched
+    # Atomic transaction
+    trip.status = TripStatus.dispatched.value
     trip.dispatched_at = datetime.utcnow()
-    vehicle.status = VehicleStatus.on_trip
-    driver.status = DriverStatus.on_trip
+    vehicle.status = VehicleStatus.on_trip.value
+    driver.status = DriverStatus.on_trip.value
     
+    db.commit()
+    db.refresh(trip)
     return trip
 
 @router.post("/{id}/complete", response_model=Trip)
-def complete_trip(id: str):
-    trip = next((t for t in mock_trips_db if t.id == id), None)
+def complete_trip(id: str, db: Session = Depends(get_db)):
+    trip = db.query(TripDB).filter(TripDB.id == id).first()
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
         
-    if trip.status != TripStatus.dispatched:
+    if trip.status != TripStatus.dispatched.value:
         raise HTTPException(
             status_code=400,
             detail={
@@ -222,26 +238,28 @@ def complete_trip(id: str):
             }
         )
     
-    vehicle = next((v for v in mock_vehicles_db if v.id == trip.vehicle_id), None)
-    driver = next((d for d in mock_drivers_db if d.id == trip.driver_id), None)
+    vehicle = db.query(VehicleDB).filter(VehicleDB.id == trip.vehicle_id).first()
+    driver = db.query(DriverDB).filter(DriverDB.id == trip.driver_id).first()
 
-    trip.status = TripStatus.completed
+    trip.status = TripStatus.completed.value
     trip.completed_at = datetime.utcnow()
     
     if vehicle:
-        vehicle.status = VehicleStatus.available
+        vehicle.status = VehicleStatus.available.value
     if driver:
-        driver.status = DriverStatus.available
+        driver.status = DriverStatus.available.value
         
+    db.commit()
+    db.refresh(trip)
     return trip
 
 @router.post("/{id}/cancel", response_model=Trip)
-def cancel_trip(id: str):
-    trip = next((t for t in mock_trips_db if t.id == id), None)
+def cancel_trip(id: str, db: Session = Depends(get_db)):
+    trip = db.query(TripDB).filter(TripDB.id == id).first()
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
         
-    if trip.status != TripStatus.dispatched and trip.status != TripStatus.draft:
+    if trip.status != TripStatus.dispatched.value and trip.status != TripStatus.draft.value:
         raise HTTPException(
             status_code=400,
             detail={
@@ -252,14 +270,16 @@ def cancel_trip(id: str):
             }
         )
     
-    vehicle = next((v for v in mock_vehicles_db if v.id == trip.vehicle_id), None)
-    driver = next((d for d in mock_drivers_db if d.id == trip.driver_id), None)
+    vehicle = db.query(VehicleDB).filter(VehicleDB.id == trip.vehicle_id).first()
+    driver = db.query(DriverDB).filter(DriverDB.id == trip.driver_id).first()
 
-    trip.status = TripStatus.cancelled
+    trip.status = TripStatus.cancelled.value
     
     if vehicle:
-        vehicle.status = VehicleStatus.available
+        vehicle.status = VehicleStatus.available.value
     if driver:
-        driver.status = DriverStatus.available
+        driver.status = DriverStatus.available.value
         
+    db.commit()
+    db.refresh(trip)
     return trip
