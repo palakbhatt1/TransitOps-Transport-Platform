@@ -32,50 +32,18 @@ export default function Maintenance() {
     return () => window.removeEventListener('auth-change', handleAuthChange);
   }, []);
 
-<<<<<<< Updated upstream
   const canSchedule = userRole === Role.FLEET_MANAGER || userRole === Role.SAFETY_OFFICER;
   const canClose = userRole === Role.FLEET_MANAGER;
-
-  // Filter out retired vehicles for new service
-  const activeVehicles = vehicles.filter(v => v.status !== 'retired');
-
-  const handleOpenSchedule = () => {
-    if (!canSchedule) {
-      toast.error('Access Denied: Only Fleet Managers and Safety Officers can schedule maintenance.');
-      return;
-    }
-    setFormData({
-      vehicle_id: activeVehicles[0]?.id || '',
-      service_type: '',
-      cost: 150.00
-    });
-    setIsScheduleOpen(true);
-  };
-
-  const handleOpenClose = (log) => {
-    if (!canClose) {
-      toast.error('Access Denied: Only Fleet Managers can close maintenance logs.');
-      return;
-    }
-    setSelectedLog(log);
-    setCloseCost(log.cost.toString());
-    setIsCloseOpen(true);
-  };
-
-  const handleSubmitSchedule = async (e) => {
-=======
-  const isEditable = userRole === Role.FLEET_MANAGER;
   const activeVehicles = vehicles.filter(v => v.status !== 'retired');
 
   const handleOpenForm = () => {
-    if (!isEditable) { toast.error('Access Denied: Only Fleet Managers can schedule maintenance.'); return; }
+    if (!canSchedule) { toast.error('Access Denied: Only Fleet Managers and Safety Officers can schedule maintenance.'); return; }
     setFormData({ vehicle_id: activeVehicles[0]?.id || '', service_type: '', cost: '', scheduled_date: '', notes: '' });
     setFormStatus('active');
     setShowForm(true);
   };
 
   const handleSubmit = async (e) => {
->>>>>>> Stashed changes
     e.preventDefault();
     try {
       await client.maintenance.create({ vehicle_id: formData.vehicle_id, service_type: formData.service_type, cost: parseFloat(formData.cost) || 0 });
@@ -85,7 +53,7 @@ export default function Maintenance() {
   };
 
   const handleClose = async (log) => {
-    if (!isEditable) { toast.error('Access Denied.'); return; }
+    if (!canClose) { toast.error('Access Denied: Only Fleet Managers can close maintenance logs.'); return; }
     try {
       await client.maintenance.closeLog(log.id, parseFloat(closeCost) || log.cost);
       toast.success('Maintenance record closed.'); setSelectedLog(null); loadData(); window.dispatchEvent(new Event('data-changed'));
@@ -117,99 +85,37 @@ export default function Maintenance() {
           <div className="flex items-center border border-[#E2E8F0] bg-white rounded px-3 py-1.5 gap-2 text-sm text-gray-600 shadow-sm">
             <Filter className="h-3.5 w-3.5 text-gray-400" /><span>Filters</span>
           </div>
-          <button id="maintenance-new-btn" onClick={handleOpenForm} className={`flex items-center gap-2 px-5 py-2 bg-[#714B67] hover:bg-[#5D3E55] text-white rounded-[6px] text-sm font-medium shadow-sm transition-all ${!isEditable ? 'opacity-40 cursor-not-allowed' : ''}`}>
+          <button id="maintenance-new-btn" onClick={handleOpenForm} className={`flex items-center gap-2 px-5 py-2 bg-[#714B67] hover:bg-[#5D3E55] text-white rounded-[6px] text-sm font-medium shadow-sm transition-all ${!canSchedule ? 'opacity-40 cursor-not-allowed' : ''}`}>
             <Plus className="h-4 w-4" />New
           </button>
         </div>
-<<<<<<< Updated upstream
-        <button
-          onClick={handleOpenSchedule}
-          className={`flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-violet-500/20 transition-all ${
-            !canSchedule ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.01]'
-          }`}
-        >
-          <Plus className="h-4 w-4" />
-          Schedule Service
-        </button>
       </div>
 
-      {/* RBAC Banner */}
+      {/* RBAC Banners */}
       {userRole === Role.SAFETY_OFFICER && (
-        <div className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 p-4 rounded-xl flex items-center gap-3 text-sm">
-          <ShieldAlert className="h-5 w-5 shrink-0" />
+        <div className="bg-indigo-50/50 border border-indigo-100 text-indigo-700 p-4 rounded-[6px] flex items-center gap-3 text-sm">
+          <ShieldAlert className="h-5 w-5 shrink-0 text-indigo-500" />
           <div>
             <span className="font-semibold">Safety Officer Access:</span> You can schedule new service logs, but closing entries and final cost audits require Fleet Manager credentials.
           </div>
         </div>
       )}
       {!canSchedule && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl flex items-center gap-3 text-sm">
-          <ShieldAlert className="h-5 w-5 shrink-0" />
+        <div className="bg-amber-50/50 border border-amber-100 text-amber-700 p-4 rounded-[6px] flex items-center gap-3 text-sm">
+          <ShieldAlert className="h-5 w-5 shrink-0 text-amber-500" />
           <div>
-            <span className="font-semibold">Read-Only View:</span> Scheduling repairs and finishing service entries require Fleet Manager or Safety Officer credentials.
+            <span className="font-semibold">Read-Only Access:</span> Scheduling repairs requires Fleet Manager or Safety Officer credentials, and closing entries requires Fleet Manager credentials.
           </div>
-=======
-      </div>
-
-      {!isEditable && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 p-4 rounded-[6px] flex items-center gap-3 text-sm">
-          <ShieldAlert className="h-5 w-5 shrink-0" />
-          <div><span className="font-semibold">Read-Only Access:</span> Only Fleet Managers can create or close maintenance records.</div>
->>>>>>> Stashed changes
         </div>
       )}
 
-      {/* Logs Table */}
-<<<<<<< Updated upstream
-      <DataTable
-        columns={columns}
-        data={logs}
-        searchKey="service_type"
-        searchPlaceholder="Search by service type..."
-        actions={canClose ? (row) => (
-          <div className="flex justify-end">
-            {!row.closed_at ? (
-              <button
-                onClick={() => handleOpenClose(row)}
-                className="px-2.5 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-500/20 hover:border-emerald-500 text-emerald-400 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
-              >
-                <Check className="h-3.5 w-3.5" /> Close Service
-              </button>
-            ) : (
-              <span className="text-xs text-zinc-500 pr-2 italic">Completed</span>
-            )}
-          </div>
-        ) : null}
-      />
-
-      {/* Schedule Service Modal */}
-      <Modal
-        isOpen={isScheduleOpen}
-        onClose={() => setIsScheduleOpen(false)}
-        title="Schedule Vehicle Service"
-      >
-        <form onSubmit={handleSubmitSchedule} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-zinc-400 uppercase">Select Vehicle</label>
-            <select
-              value={formData.vehicle_id}
-              onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-lg text-sm focus:outline-none focus:border-violet-500"
-              required
-            >
-              <option value="" disabled>-- Choose Vehicle --</option>
-              {activeVehicles.map(v => (
-                <option key={v.id} value={v.id}>
-                  {v.registration_number} - {v.model} ({v.status.toUpperCase()})
-                </option>
-=======
+      {/* Table */}
       <div className="bg-white rounded-[6px] shadow-sm border border-[#E2E8F0] overflow-hidden">
         <table className="w-full text-left text-[14px]">
           <thead>
             <tr className="bg-[#F8F9FA] border-b border-[#E2E8F0] text-gray-500 uppercase text-[11px] tracking-wider">
-              {['Vehicle', 'Service Type', 'Cost', 'Date', 'Status', ...(isEditable ? [''] : [])].map(h => (
+              {['Vehicle', 'Service Type', 'Cost', 'Date', 'Status', ...(canClose ? [''] : [])].map(h => (
                 <th key={h} className={`px-6 py-3 font-bold ${h === 'Cost' ? 'text-right' : ''}`}>{h}</th>
->>>>>>> Stashed changes
               ))}
             </tr>
           </thead>
@@ -219,7 +125,7 @@ export default function Maintenance() {
             ) : logs.map(log => {
               const status = getLogStatus(log);
               return (
-              <tr key={log.id} className="hover:bg-[#F8F9FA] transition-colors cursor-pointer" onClick={() => { if (isEditable && status === 'active') { setSelectedLog(log); setCloseCost(log.cost); } }}>
+              <tr key={log.id} className="hover:bg-[#F8F9FA] transition-colors cursor-pointer" onClick={() => { if (canClose && status === 'active') { setSelectedLog(log); setCloseCost(log.cost); } }}>
                 <td className="px-6 py-4 font-medium text-[#714B67]">{getVehicleLabel(log.vehicle_id)}</td>
                 <td className="px-6 py-4 text-gray-600">{log.service_type}</td>
                 <td className="px-6 py-4 text-right font-medium">${parseFloat(log.cost).toFixed(2)}</td>
@@ -230,7 +136,7 @@ export default function Maintenance() {
                     <span className="text-xs capitalize">{status}</span>
                   </div>
                 </td>
-                {isEditable && (
+                {canClose && (
                   <td className="px-6 py-4 text-right">
                     {status === 'active' && (
                       <button onClick={(e) => { e.stopPropagation(); setSelectedLog(log); setCloseCost(log.cost); }} className="px-3 py-1 text-xs font-semibold text-[#00A09D] border border-[#00A09D] rounded hover:bg-teal-50 transition-colors flex items-center gap-1">

@@ -7,7 +7,7 @@ import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 
-function KanbanCard({ trip, drivers, isDispatcher, onDispatch, onComplete, onCancel }) {
+function KanbanCard({ trip, drivers, isDispatcher, userRole, onDispatch, onComplete, onCancel }) {
   const driver = drivers.find(d => d.id === trip.driver_id);
   const initials = driver ? driver.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '--';
   const borderMap = { draft: 'border-gray-400', dispatched: 'border-blue-500', completed: 'border-green-500', cancelled: 'border-red-500' };
@@ -27,7 +27,7 @@ function KanbanCard({ trip, drivers, isDispatcher, onDispatch, onComplete, onCan
               <button onClick={() => onCancel(trip.id)} className="text-red-400 hover:text-red-600 ml-1"><XCircle className="h-3.5 w-3.5" /></button>
             </>
           )}
-          {isDispatcher && trip.status === 'dispatched' && (
+          {(isDispatcher || userRole === Role.DRIVER) && trip.status === 'dispatched' && (
             <>
               <button onClick={() => onComplete(trip.id)} className="px-2 py-0.5 text-[10px] font-bold bg-green-50 hover:bg-green-500 text-green-600 hover:text-white border border-green-200 rounded transition-all">Complete</button>
               <button onClick={() => onCancel(trip.id)} className="text-red-400 hover:text-red-600 ml-1"><XCircle className="h-3.5 w-3.5" /></button>
@@ -157,98 +157,22 @@ export default function Trips() {
         </div>
       </div>
 
-<<<<<<< Updated upstream
-      {/* RBAC Warning banner */}
+      {/* RBAC Warning banners */}
       {userRole === Role.DRIVER && (
-        <div className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 p-4 rounded-xl flex items-center gap-3 text-sm">
-          <ShieldAlert className="h-5 w-5 shrink-0" />
+        <div className="bg-indigo-50/50 border border-indigo-100 text-indigo-700 p-4 rounded-[6px] flex items-center gap-3 text-sm">
+          <ShieldAlert className="h-5 w-5 shrink-0 text-indigo-500" />
           <div>
             <span className="font-semibold">Driver Access:</span> You can view assignments and update dispatched trip statuses (Complete/Cancel). Draft trip creation is locked.
           </div>
         </div>
       )}
       {!isDispatcher && userRole !== Role.DRIVER && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl flex items-center gap-3 text-sm">
-=======
-      {!isDispatcher && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 p-4 rounded-[6px] flex items-center gap-3 text-sm">
->>>>>>> Stashed changes
-          <ShieldAlert className="h-5 w-5 shrink-0" />
+        <div className="bg-amber-50/50 border border-amber-100 text-amber-700 p-4 rounded-[6px] flex items-center gap-3 text-sm">
+          <ShieldAlert className="h-5 w-5 shrink-0 text-amber-500" />
           <div><span className="font-semibold">Read-Only View:</span> Route creation and status dispatches are locked to Fleet Managers.</div>
         </div>
       )}
 
-<<<<<<< Updated upstream
-      {/* Trips Table */}
-      <DataTable
-        columns={columns}
-        data={trips}
-        searchKey="destination"
-        searchPlaceholder="Search trips by destination..."
-        actions={(isDispatcher || userRole === Role.DRIVER) ? (row) => (
-          <div className="flex justify-end gap-2">
-            {row.status === TripStatus.DRAFT && isDispatcher && (
-              <>
-                <button
-                  onClick={() => handleDispatch(row.id)}
-                  className="px-2.5 py-1 bg-indigo-600/10 hover:bg-indigo-600 border border-indigo-500/20 hover:border-indigo-500 text-indigo-400 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
-                  title="Dispatch Trip"
-                >
-                  <Play className="h-3 w-3" /> Dispatch
-                </button>
-                <button
-                  onClick={() => handleCancel(row.id)}
-                  className="p-1 text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 rounded-lg transition-colors"
-                  title="Cancel Trip"
-                >
-                  <XCircle className="h-4 w-4" />
-                </button>
-              </>
-            )}
-            {row.status === TripStatus.DRAFT && !isDispatcher && (
-              <span className="text-xs text-zinc-500 pr-2 italic">Draft (Locked)</span>
-            )}
-            {row.status === TripStatus.DISPATCHED && (
-              <>
-                <button
-                  onClick={() => handleComplete(row.id)}
-                  className="px-2.5 py-1 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-500/20 hover:border-emerald-500 text-emerald-400 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
-                  title="Mark Completed"
-                >
-                  <Check className="h-3 w-3" /> Complete
-                </button>
-                <button
-                  onClick={() => handleCancel(row.id)}
-                  className="p-1 text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 rounded-lg transition-colors"
-                  title="Cancel Trip"
-                >
-                  <XCircle className="h-4 w-4" />
-                </button>
-              </>
-            )}
-            {(row.status === TripStatus.COMPLETED || row.status === TripStatus.CANCELLED) && (
-              <span className="text-xs text-zinc-500 pr-2 italic">No actions</span>
-            )}
-          </div>
-        ) : null}
-      />
-
-      {/* Dispatch Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Create Trip Dispatch"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* Validation Banner inside modal */}
-          {errorBanner && (
-            <div className="bg-rose-500/15 border border-rose-500/25 p-3 rounded-xl flex items-start gap-2.5 text-xs text-rose-400">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold">Validation Failed</span>
-                <p className="mt-1 font-mono">{errorBanner}</p>
-=======
       {viewMode === 'kanban' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {kanbanCols.map(col => {
@@ -262,9 +186,8 @@ export default function Trips() {
                 {colTrips.length === 0
                   ? <div className="flex items-center justify-center flex-1 text-gray-300 text-xs italic py-6">No trips</div>
                   : colTrips.map(trip => (
-                    <KanbanCard key={trip.id} trip={trip} drivers={drivers} isDispatcher={isDispatcher} onDispatch={handleDispatch} onComplete={handleComplete} onCancel={handleCancel} />
+                    <KanbanCard key={trip.id} trip={trip} drivers={drivers} isDispatcher={isDispatcher} userRole={userRole} onDispatch={handleDispatch} onComplete={handleComplete} onCancel={handleCancel} />
                   ))}
->>>>>>> Stashed changes
               </div>
             );
           })}
@@ -274,9 +197,10 @@ export default function Trips() {
       {viewMode === 'list' && (
         <DataTable
           columns={columns} data={trips} searchKey="destination" searchPlaceholder="Search trips..."
-          actions={isDispatcher ? (row) => (
+          actions={(isDispatcher || userRole === Role.DRIVER) ? (row) => (
             <div className="flex justify-end gap-2">
-              {row.status === TripStatus.DRAFT && (<><button onClick={() => handleDispatch(row.id)} className="px-2.5 py-1 bg-blue-50 hover:bg-blue-500 border border-blue-200 text-blue-600 hover:text-white rounded text-xs font-semibold flex items-center gap-1 transition-all"><Send className="h-3 w-3" /> Dispatch</button><button onClick={() => handleCancel(row.id)} className="p-1 text-gray-400 hover:text-rose-600 hover:bg-gray-100 rounded"><XCircle className="h-4 w-4" /></button></>)}
+              {row.status === TripStatus.DRAFT && isDispatcher && (<><button onClick={() => handleDispatch(row.id)} className="px-2.5 py-1 bg-blue-50 hover:bg-blue-500 border border-blue-200 text-blue-600 hover:text-white rounded text-xs font-semibold flex items-center gap-1 transition-all"><Send className="h-3 w-3" /> Dispatch</button><button onClick={() => handleCancel(row.id)} className="p-1 text-gray-400 hover:text-rose-600 hover:bg-gray-100 rounded"><XCircle className="h-4 w-4" /></button></>)}
+              {row.status === TripStatus.DRAFT && !isDispatcher && <span className="text-xs text-gray-400 pr-2 italic">Draft (Locked)</span>}
               {row.status === TripStatus.DISPATCHED && (<><button onClick={() => handleComplete(row.id)} className="px-2.5 py-1 bg-green-50 hover:bg-green-500 border border-green-200 text-green-600 hover:text-white rounded text-xs font-semibold flex items-center gap-1 transition-all"><Check className="h-3 w-3" /> Complete</button><button onClick={() => handleCancel(row.id)} className="p-1 text-gray-400 hover:text-rose-600 hover:bg-gray-100 rounded"><XCircle className="h-4 w-4" /></button></>)}
               {(row.status === TripStatus.COMPLETED || row.status === TripStatus.CANCELLED) && <span className="text-xs text-gray-400 pr-2 italic">–</span>}
             </div>
