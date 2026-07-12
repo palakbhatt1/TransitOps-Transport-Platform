@@ -14,9 +14,10 @@ class Settings(BaseModel):
     DATABASE_URL: str = Field(
         default_factory=lambda: os.getenv(
             "DATABASE_URL",
-            "postgresql://postgres:postgres@localhost:5432/transitops",
+            "sqlite:///./transitops.db",
         )
     )
+
 
     SECRET_KEY: str = Field(
         default_factory=lambda: os.getenv(
