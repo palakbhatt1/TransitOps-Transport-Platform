@@ -170,8 +170,8 @@ export default function Dashboard() {
       </div>
 
       {/* Filters & Actions Bar */}
-      <div className="bg-white rounded-[6px] p-2 flex flex-col sm:flex-row sm:items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-[#E2E8F0] gap-3">
-        <div className="flex items-center gap-2">
+      <div className="bg-white rounded-[6px] p-3 flex flex-col lg:flex-row lg:items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-[#E2E8F0] gap-4">
+        <div className="flex items-center gap-2 shrink-0">
           <button className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded flex items-center gap-2 border border-transparent hover:border-gray-200 transition-all cursor-pointer">
             <Filter className="h-3.5 w-3.5" /> Filters
           </button>
@@ -183,9 +183,9 @@ export default function Dashboard() {
           </button>
         </div>
         
-        <div className="flex items-center flex-1 max-w-md bg-gray-50 border border-gray-250 rounded px-3 py-1.5 gap-2">
+        <div className="flex items-center flex-1 min-w-0 lg:max-w-[640px] bg-gray-50 border border-gray-200 rounded-[6px] px-3 py-2 gap-2">
           {showActiveTripsOnly && (
-            <div className="flex items-center gap-1 bg-[#714B67] text-white text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium">
+            <div className="flex items-center gap-1 bg-[#714B67] text-white text-[11px] px-2.5 py-1 rounded-full shrink-0 font-medium leading-none">
               Active Trips
               <button 
                 onClick={() => setShowActiveTripsOnly(false)} 
@@ -198,12 +198,12 @@ export default function Dashboard() {
           {!showActiveTripsOnly && (
             <button 
               onClick={() => setShowActiveTripsOnly(true)} 
-              className="text-[10px] text-gray-400 hover:text-[#714B67] font-semibold border border-dashed border-gray-300 px-2 py-0.5 rounded-full transition-colors cursor-pointer animate-pulse"
+              className="text-[11px] text-gray-500 hover:text-[#714B67] font-semibold border border-dashed border-gray-300 px-2.5 py-1 rounded-full transition-colors cursor-pointer shrink-0"
             >
               + Filter Active
             </button>
           )}
-          <div className="relative w-full">
+          <div className="relative min-w-0 flex-1">
             <input 
               type="text" 
               value={searchTerm}
@@ -296,7 +296,7 @@ export default function Dashboard() {
                             {driver ? driver.name : 'N/A'}
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
                               <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
                               <span>{statusText}</span>
                             </div>
@@ -364,19 +364,19 @@ export default function Dashboard() {
               
               {/* Legend Grid */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className="w-3 h-3 rounded-sm bg-[#714B67] shrink-0" />
                   <span className="text-[13px] text-gray-600 font-medium">On Trip ({activePctNorm}%)</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className="w-3 h-3 rounded-sm bg-[#00A09D] shrink-0" />
                   <span className="text-[13px] text-gray-600 font-medium">Available ({availablePctNorm}%)</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className="w-3 h-3 rounded-sm bg-gray-200 shrink-0 border border-gray-300/40" />
                   <span className="text-[13px] text-gray-600 font-medium">In Shop ({maintPctNorm}%)</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className="w-3 h-3 rounded-sm bg-red-400 shrink-0" />
                   <span className="text-[13px] text-gray-600 font-medium">Retired ({retiredPctNorm}%)</span>
                 </div>
