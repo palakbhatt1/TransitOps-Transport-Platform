@@ -25,7 +25,7 @@ export default function AppLayout({ children }) {
   const location = useLocation();
   const toast = useToast();
   const [currentUser, setCurrentUser] = useState(null);
-  const [isMock, setIsMock] = useState(client.isMock());
+  const [dbType, setDbType] = useState('sqlite');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const syncUser = () => {
@@ -39,8 +39,18 @@ export default function AppLayout({ children }) {
 
   useEffect(() => {
     syncUser();
-    // Listen for auth/role changes from sibling pages
     window.addEventListener('auth-change', syncUser);
+    
+    const fetchDbStatus = async () => {
+      try {
+        const res = await client.dashboard.getDbStatus();
+        setDbType(res.database_type || 'sqlite');
+      } catch (err) {
+        console.error('Failed to retrieve db status', err);
+      }
+    };
+    fetchDbStatus();
+
     return () => {
       window.removeEventListener('auth-change', syncUser);
     };
@@ -52,17 +62,6 @@ export default function AppLayout({ children }) {
     setCurrentUser(updated);
     toast.info(`Switched active view to: ${newRole.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}`);
     window.dispatchEvent(new Event('auth-change'));
-  };
-
-  const handleToggleMock = () => {
-    const newVal = !isMock;
-    client.setMock(newVal);
-    setIsMock(newVal);
-    toast.success(newVal ? "Switched to Local Mock mode" : "Switched to Live Backend API mode");
-    // Small timeout to allow toast to render before reload
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
   };
 
   const handleLogout = () => {
@@ -108,18 +107,18 @@ export default function AppLayout({ children }) {
 
         {/* User Actions */}
         <div className="flex items-center gap-4">
-          {/* Mock/Live Toggle */}
-          <button
-            onClick={handleToggleMock}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
-              isMock 
-                ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-                : 'bg-[#00A09D] hover:bg-[#008d8a] text-white'
+          {/* Database Dialect Badge */}
+          <div
+            id="db-engine-badge"
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-extrabold shadow-sm border ${
+              dbType === 'postgresql'
+                ? 'bg-[#00A09D]/15 text-emerald-400 border-emerald-500/20'
+                : 'bg-amber-500/15 text-amber-300 border-amber-500/25'
             }`}
           >
-            {isMock ? <Database className="h-3.5 w-3.5" /> : <Cpu className="h-3.5 w-3.5" />}
-            {isMock ? 'Mock Data' : 'Live API'}
-          </button>
+            <Database className="h-3.5 w-3.5 shrink-0" />
+            <span>{dbType === 'postgresql' ? '🐘 PostgreSQL DB' : '🗄️ SQLite DB'}</span>
+          </div>
 
           {/* Role Switcher */}
           <div className="flex items-center gap-1.5">

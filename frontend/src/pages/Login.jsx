@@ -13,8 +13,20 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isMock, setIsMock] = useState(client.isMock());
+  const [dbType, setDbType] = useState('sqlite');
   const [currentSlide, setCurrentSlide] = useState(1);
+
+  useEffect(() => {
+    const fetchDbStatus = async () => {
+      try {
+        const res = await client.dashboard.getDbStatus();
+        setDbType(res.database_type || 'sqlite');
+      } catch (err) {
+        console.error('Failed to retrieve db status', err);
+      }
+    };
+    fetchDbStatus();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -22,13 +34,6 @@ export default function Login() {
     }, 5000);
     return () => clearTimeout(timer);
   }, [currentSlide]);
-
-  const handleToggleMock = () => {
-    const newVal = !isMock;
-    client.setMock(newVal);
-    setIsMock(newVal);
-    toast.success(newVal ? "Switched to Local Mock mode" : "Switched to Live Backend API mode");
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,8 +51,8 @@ export default function Login() {
       navigate('/');
     } catch (err) {
       console.error(err);
-      if (!client.isMock() && (err.message?.includes('Network Error') || !err.response)) {
-        toast.error('Network Error: Cannot connect to the Live API server. Switch to "Mock Data" mode in the top right.');
+      if (err.message?.includes('Network Error') || !err.response) {
+        toast.error('Network Error: Cannot connect to the Live API server. Please check that uvicorn is running.');
       } else {
         toast.error(err.message || 'Login failed. Please check your credentials.');
       }
@@ -63,19 +68,19 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] flex items-center justify-center p-4 font-sans overflow-hidden relative">
-      {/* Top Right Mock/Live Mode Toggle */}
+      {/* Top Right Active Database Status Badge */}
       <div className="absolute top-4 right-4 z-50">
-        <button
-          onClick={handleToggleMock}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
-            isMock 
-              ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-              : 'bg-[#00A09D] hover:bg-[#008d8a] text-white'
+        <div
+          id="db-engine-badge"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold shadow-sm border ${
+            dbType === 'postgresql'
+              ? 'bg-[#00A09D]/15 text-[#00A09D] border-[#00a09d]/30'
+              : 'bg-amber-500/15 text-amber-600 border-amber-500/30'
           }`}
         >
-          {isMock ? <Database className="h-3.5 w-3.5" /> : <Cpu className="h-3.5 w-3.5" />}
-          {isMock ? 'Mock Data' : 'Live API'}
-        </button>
+          <Database className="h-3.5 w-3.5 shrink-0" />
+          <span>{dbType === 'postgresql' ? '🐘 PostgreSQL' : '🗄️ SQLite'}</span>
+        </div>
       </div>
 
       {/* Container Box */}

@@ -1,20 +1,46 @@
 from fastapi.testclient import TestClient
 from main import app
 from app.schemas.contracts import TripStatus, VehicleStatus, DriverStatus
-from app.database.database import SessionLocal
-from app.models.models import VehicleDB, DriverDB, TripDB, MaintenanceLogDB
+from app.database.database import get_db, Base
+from app.models.models import VehicleDB, DriverDB, TripDB, MaintenanceLogDB, FuelLogDB, ExpenseDB
 from datetime import datetime, timedelta
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# Isolate unit tests database to a local SQLite file
+TEST_DATABASE_URL = "sqlite:///./test.db"
+test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+# Re-route database connection for app endpoints
+def override_get_db():
+    db = TestSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
+@pytest.fixture(scope="session", autouse=True)
+def init_test_tables():
+    # Make sure test tables are created
+    Base.metadata.create_all(bind=test_engine)
+    yield
+    Base.metadata.drop_all(bind=test_engine)
 
 @pytest.fixture(autouse=True)
 def reset_db():
     # Helper to restore SQL database to clean state before each test
-    db = SessionLocal()
+    db = TestSessionLocal()
     try:
         db.query(TripDB).delete()
         db.query(MaintenanceLogDB).delete()
+        db.query(FuelLogDB).delete()
+        db.query(ExpenseDB).delete()
         db.query(VehicleDB).delete()
         db.query(DriverDB).delete()
         db.commit()
@@ -59,7 +85,7 @@ def reset_db():
         db.close()
 
 def check_vehicle_status(vehicle_id: str, expected_status: VehicleStatus):
-    db = SessionLocal()
+    db = TestSessionLocal()
     try:
         vehicle = db.query(VehicleDB).filter(VehicleDB.id == vehicle_id).first()
         assert vehicle is not None
@@ -68,7 +94,7 @@ def check_vehicle_status(vehicle_id: str, expected_status: VehicleStatus):
         db.close()
 
 def check_driver_status(driver_id: str, expected_status: DriverStatus):
-    db = SessionLocal()
+    db = TestSessionLocal()
     try:
         driver = db.query(DriverDB).filter(DriverDB.id == driver_id).first()
         assert driver is not None
