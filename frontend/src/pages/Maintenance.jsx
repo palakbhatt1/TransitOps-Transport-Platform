@@ -57,14 +57,15 @@ export default function Maintenance() {
     return () => window.removeEventListener('auth-change', handleAuthChange);
   }, []);
 
-  const isEditable = userRole === Role.FLEET_MANAGER;
+  const canSchedule = userRole === Role.FLEET_MANAGER || userRole === Role.SAFETY_OFFICER;
+  const canClose = userRole === Role.FLEET_MANAGER;
 
   // Filter out retired vehicles for new service
   const activeVehicles = vehicles.filter(v => v.status !== 'retired');
 
   const handleOpenSchedule = () => {
-    if (!isEditable) {
-      toast.error('Access Denied: Only Fleet Managers can schedule maintenance.');
+    if (!canSchedule) {
+      toast.error('Access Denied: Only Fleet Managers and Safety Officers can schedule maintenance.');
       return;
     }
     setFormData({
@@ -76,8 +77,8 @@ export default function Maintenance() {
   };
 
   const handleOpenClose = (log) => {
-    if (!isEditable) {
-      toast.error('Access Denied: Restricted operation.');
+    if (!canClose) {
+      toast.error('Access Denied: Only Fleet Managers can close maintenance logs.');
       return;
     }
     setSelectedLog(log);
@@ -156,7 +157,7 @@ export default function Maintenance() {
         <button
           onClick={handleOpenSchedule}
           className={`flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-violet-500/20 transition-all ${
-            !isEditable ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.01]'
+            !canSchedule ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.01]'
           }`}
         >
           <Plus className="h-4 w-4" />
@@ -165,11 +166,19 @@ export default function Maintenance() {
       </div>
 
       {/* RBAC Banner */}
-      {!isEditable && (
+      {userRole === Role.SAFETY_OFFICER && (
+        <div className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 p-4 rounded-xl flex items-center gap-3 text-sm">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          <div>
+            <span className="font-semibold">Safety Officer Access:</span> You can schedule new service logs, but closing entries and final cost audits require Fleet Manager credentials.
+          </div>
+        </div>
+      )}
+      {!canSchedule && (
         <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl flex items-center gap-3 text-sm">
           <ShieldAlert className="h-5 w-5 shrink-0" />
           <div>
-            <span className="font-semibold">Read-Only View:</span> Scheduling repairs and finishing service entries require Fleet Manager credentials.
+            <span className="font-semibold">Read-Only View:</span> Scheduling repairs and finishing service entries require Fleet Manager or Safety Officer credentials.
           </div>
         </div>
       )}
@@ -180,7 +189,7 @@ export default function Maintenance() {
         data={logs}
         searchKey="service_type"
         searchPlaceholder="Search by service type..."
-        actions={isEditable ? (row) => (
+        actions={canClose ? (row) => (
           <div className="flex justify-end">
             {!row.closed_at ? (
               <button
