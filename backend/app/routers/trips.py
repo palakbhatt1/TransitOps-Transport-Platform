@@ -10,10 +10,12 @@ router = APIRouter()
 @router.get("/", response_model=List[Trip])
 def get_trips():
     return mock_trips_db
+    """Retrieve all scheduled and dispatched trips from the system."""
 
 @router.post("/", response_model=Trip)
 def create_trip(trip: TripBase):
     # Strict input validations
+    """Create a new trip in draft status with input validations."""
     if not trip.origin.strip():
         raise HTTPException(
             status_code=400,
@@ -87,6 +89,7 @@ def get_trip(id: str):
 @router.post("/{id}/dispatch", response_model=Trip)
 def dispatch_trip(id: str):
     trip = next((t for t in mock_trips_db if t.id == id), None)
+    """Dispatch a trip and update vehicle and driver status to active."""
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     
