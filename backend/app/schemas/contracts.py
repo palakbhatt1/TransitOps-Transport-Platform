@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from enum import Enum
 from datetime import datetime
@@ -38,10 +38,8 @@ class VehicleBase(BaseModel):
     status: VehicleStatus
 
 class Vehicle(VehicleBase):
+    model_config = ConfigDict(from_attributes=True)
     id: str
-    
-    class Config:
-        from_attributes = True
 
 class DriverBase(BaseModel):
     name: str
@@ -53,10 +51,8 @@ class DriverBase(BaseModel):
     status: DriverStatus
 
 class Driver(DriverBase):
+    model_config = ConfigDict(from_attributes=True)
     id: str
-    
-    class Config:
-        from_attributes = True
 
 class TripBase(BaseModel):
     vehicle_id: str
@@ -69,10 +65,8 @@ class TripBase(BaseModel):
     completed_at: Optional[datetime] = None
 
 class Trip(TripBase):
+    model_config = ConfigDict(from_attributes=True)
     id: str
-    
-    class Config:
-        from_attributes = True
 
 class MaintenanceLogBase(BaseModel):
     vehicle_id: str
@@ -82,10 +76,8 @@ class MaintenanceLogBase(BaseModel):
     closed_at: Optional[datetime] = None
 
 class MaintenanceLog(MaintenanceLogBase):
+    model_config = ConfigDict(from_attributes=True)
     id: str
-    
-    class Config:
-        from_attributes = True
 
 class DashboardKPIs(BaseModel):
     active_vehicles: int
