@@ -44,6 +44,22 @@ initLocalStorage();
 const getMockData = (key) => JSON.parse(localStorage.getItem(key));
 const setMockData = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
+const normalizeApiError = (error) => {
+  const detail = error?.response?.data?.detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => {
+      const field = Array.isArray(item.loc) ? item.loc.filter(part => part !== 'body').join('.') : item.loc;
+      return field ? `${field}: ${item.msg}` : item.msg;
+    }).join(' | ');
+  }
+  if (detail && typeof detail === 'object') {
+    return detail.message || detail.error || JSON.stringify(detail);
+  }
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  return error?.message || 'Request failed.';
+};
 // Create Axios Instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -237,10 +253,7 @@ export const client = {
         setMockData('transitops_trips', trips);
         return newTrip;
       }
-      const res = await api.post('/trips', {
-        ...data,
-        status: data.status || TripStatus.DRAFT
-      });
+      const res = await api.post('/trips', data);
       return res.data;
     },
     dispatch: async (id) => {

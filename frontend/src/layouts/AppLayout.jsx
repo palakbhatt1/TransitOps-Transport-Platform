@@ -79,9 +79,9 @@ export default function AppLayout({ children }) {
     { name: 'Drivers', path: '/drivers', icon: Users },
     { name: 'Trips', path: '/trips', icon: MapPin },
     { name: 'Maintenance', path: '/maintenance', icon: Wrench },
-    { name: 'Fuel & Expenses', path: '/expenses', icon: Coins, disabled: true },
-    { name: 'Analytics', path: '/analytics', icon: BarChart3, disabled: true },
-    { name: 'Settings', path: '/settings', icon: SettingsIcon, disabled: true },
+    { name: 'Fuel & Expenses', path: '/expenses', icon: Coins },
+    { name: 'Analytics', path: '/analytics', icon: BarChart3 },
+    { name: 'Settings', path: '/settings', icon: SettingsIcon },
   ];
 
   return (
