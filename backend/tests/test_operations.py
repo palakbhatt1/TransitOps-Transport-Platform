@@ -191,3 +191,37 @@ def test_maintenance_workflow():
     # 4. Dispatch should now succeed
     dispatch_response = client.post(f"/api/trips/{trip_id}/dispatch")
     assert dispatch_response.status_code == 200
+
+
+def test_create_trip_invalid_inputs():
+    # 1. Empty origin
+    payload = {
+        "vehicle_id": "v1",
+        "driver_id": "d1",
+        "origin": "   ",
+        "destination": "B",
+        "cargo_weight_kg": 5000.0,
+        "status": "draft"
+    }
+    res = client.post("/api/trips/", json=payload)
+    assert res.status_code == 400
+    assert res.json()["detail"]["code"] == "INVALID_ORIGIN"
+
+    # 2. Negative cargo weight
+    payload["origin"] = "A"
+    payload["cargo_weight_kg"] = -100
+    res = client.post("/api/trips/", json=payload)
+    assert res.status_code == 400
+    assert res.json()["detail"]["code"] == "INVALID_CARGO_WEIGHT"
+
+def test_maintenance_invalid_inputs():
+    # 1. Negative cost
+    payload = {
+        "vehicle_id": "v1",
+        "service_type": "Tire Rotation",
+        "cost": -50.0,
+        "opened_at": datetime.now().isoformat()
+    }
+    res = client.post("/api/maintenance/", json=payload)
+    assert res.status_code == 400
+    assert res.json()["detail"]["code"] == "INVALID_COST"

@@ -10,9 +10,42 @@ router = APIRouter()
 @router.get("/", response_model=List[Trip])
 def get_trips():
     return mock_trips_db
+    """Retrieve all scheduled and dispatched trips from the system."""
 
 @router.post("/", response_model=Trip)
 def create_trip(trip: TripBase):
+    # Strict input validations
+    """Create a new trip in draft status with input validations."""
+    if not trip.origin.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_ORIGIN",
+                "message": "Origin cannot be empty or blank space",
+                "field": "origin"
+            }
+        )
+    if not trip.destination.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_DESTINATION",
+                "message": "Destination cannot be empty or blank space",
+                "field": "destination"
+            }
+        )
+    if trip.cargo_weight_kg <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_CARGO_WEIGHT",
+                "message": "Cargo weight must be greater than 0 kg",
+                "field": "cargo_weight_kg"
+            }
+        )
     # Verify vehicle and driver exist
     vehicle = next((v for v in mock_vehicles_db if v.id == trip.vehicle_id), None)
     if not vehicle:
@@ -56,6 +89,7 @@ def get_trip(id: str):
 @router.post("/{id}/dispatch", response_model=Trip)
 def dispatch_trip(id: str):
     trip = next((t for t in mock_trips_db if t.id == id), None)
+    """Dispatch a trip and update vehicle and driver status to active."""
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     

@@ -10,9 +10,32 @@ router = APIRouter()
 @router.get("/", response_model=List[MaintenanceLog])
 def get_maintenance_logs():
     return mock_maintenance_db
+    """Retrieve all logged maintenance logs."""
 
 @router.post("/", response_model=MaintenanceLog)
 def open_maintenance_log(log: MaintenanceLogBase):
+    # Strict input validations
+    """Open a new maintenance log and set vehicle to in_shop status."""
+    if not log.service_type.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_SERVICE_TYPE",
+                "message": "Service type cannot be empty or blank space",
+                "field": "service_type"
+            }
+        )
+    if log.cost < 0:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_COST",
+                "message": "Maintenance cost cannot be negative",
+                "field": "cost"
+            }
+        )
     # Verify vehicle exists
     vehicle = next((v for v in mock_vehicles_db if v.id == log.vehicle_id), None)
     if not vehicle:
@@ -67,6 +90,7 @@ def open_maintenance_log(log: MaintenanceLogBase):
 @router.put("/{id}/close", response_model=MaintenanceLog)
 def close_maintenance_log(id: str):
     log = next((m for m in mock_maintenance_db if m.id == id), None)
+    """Close an open maintenance log and set vehicle status back to available."""
     if not log:
         raise HTTPException(status_code=404, detail="Maintenance log not found")
     
