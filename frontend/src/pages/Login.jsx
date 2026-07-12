@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, LogIn, ArrowRight, Truck, Route } from 'lucide-react';
+import { Mail, Lock, LogIn, ArrowRight, Route, Database, Cpu } from 'lucide-react';
 import { client } from '../api/client';
 import { useToast } from '../components/Toast';
+import logo from '../assets/logo.svg';
+import slide1 from '../assets/slide_login_1.svg';
+import slide3 from '../assets/slide_login_3.svg';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -10,6 +13,22 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isMock, setIsMock] = useState(client.isMock());
+  const [currentSlide, setCurrentSlide] = useState(1);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentSlide(prev => (prev === 1 ? 3 : 1));
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [currentSlide]);
+
+  const handleToggleMock = () => {
+    const newVal = !isMock;
+    client.setMock(newVal);
+    setIsMock(newVal);
+    toast.success(newVal ? "Switched to Local Mock mode" : "Switched to Live Backend API mode");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,7 +45,12 @@ export default function Login() {
       window.dispatchEvent(new Event('auth-change'));
       navigate('/');
     } catch (err) {
-      toast.error(err.message || 'Login failed. Please check your credentials.');
+      console.error(err);
+      if (!client.isMock() && (err.message?.includes('Network Error') || !err.response)) {
+        toast.error('Network Error: Cannot connect to the Live API server. Switch to "Mock Data" mode in the top right.');
+      } else {
+        toast.error(err.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -38,7 +62,22 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] flex items-center justify-center p-4 font-sans overflow-hidden">
+    <div className="min-h-screen bg-[#F0F2F5] flex items-center justify-center p-4 font-sans overflow-hidden relative">
+      {/* Top Right Mock/Live Mode Toggle */}
+      <div className="absolute top-4 right-4 z-50">
+        <button
+          onClick={handleToggleMock}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+            isMock 
+              ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+              : 'bg-[#00A09D] hover:bg-[#008d8a] text-white'
+          }`}
+        >
+          {isMock ? <Database className="h-3.5 w-3.5" /> : <Cpu className="h-3.5 w-3.5" />}
+          {isMock ? 'Mock Data' : 'Live API'}
+        </button>
+      </div>
+
       {/* Container Box */}
       <div className="w-full max-w-[960px] h-[580px] bg-white rounded-[12px] shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05),0_8px_10px_-6px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col md:flex-row transition-all duration-300">
         
@@ -48,9 +87,7 @@ export default function Login() {
           {/* Header */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-9 h-9 bg-[#714B67] rounded-lg flex items-center justify-center shadow-sm">
-                <Truck className="text-white h-4.5 w-4.5" />
-              </div>
+              <img src={logo} alt="TransitOps Logo" className="w-9 h-9 object-contain" />
               <span className="text-xl font-bold tracking-tight text-[#714B67]">
                 TransitOps
               </span>
@@ -169,37 +206,75 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Right Column: Illustration Graphic */}
-        <div className="hidden md:flex w-1/2 bg-gradient-to-br from-[#714B67] to-[#4D3346] relative items-center justify-center overflow-hidden h-full">
-          {/* Subtle dotted background grid pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div 
-              className="absolute top-0 left-0 w-full h-full" 
-              style={{ 
-                backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', 
-                backgroundSize: '32px 32px' 
-              }} 
-            />
+        {/* Right Column: Illustration Graphic Carousel */}
+        <div 
+          onClick={() => setCurrentSlide(prev => (prev === 1 ? 3 : 1))}
+          className="hidden md:flex w-1/2 h-full flex-col relative overflow-hidden bg-[#F5F2F9] cursor-pointer select-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(92, 60, 85, 0.15) 1.5px, transparent 0)',
+            backgroundSize: '24px 24px'
+          }}
+          title="Click to switch slide"
+        >
+          <div 
+            className="flex w-[200%] h-[calc(100%-80px)] transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(${currentSlide === 1 ? '0%' : '-50%'})` }}
+          >
+            {/* Slide 1 */}
+            <div className="w-1/2 h-full flex flex-col items-center justify-center px-10 pt-4 pb-8">
+              <div className="w-[280px] h-[280px] flex items-center justify-center mb-6">
+                <img 
+                  src={slide1} 
+                  alt="Transport Management Illustration" 
+                  className="max-w-full max-h-full object-contain pointer-events-none" 
+                />
+              </div>
+              <h2 className="text-[22px] font-bold text-[#4A2D66] text-center mb-3 leading-tight">
+                All-in-One Transport Management
+              </h2>
+              <p className="text-[12.5px] text-[#78618C] text-center leading-relaxed max-w-[340px]">
+                Manage your entire fleet, drivers, trips, and expenses from a single, centralized platform.
+              </p>
+            </div>
+
+            {/* Slide 3 */}
+            <div className="w-1/2 h-full flex flex-col items-center justify-center px-10 pt-4 pb-8">
+              <div className="w-[280px] h-[280px] flex items-center justify-center mb-6">
+                <img 
+                  src={slide3} 
+                  alt="Transport Operations Illustration" 
+                  className="max-w-full max-h-full object-contain pointer-events-none" 
+                />
+              </div>
+              <h2 className="text-[22px] font-bold text-[#4A2D66] text-center mb-3 leading-tight">
+                Smarter Transport Operations
+              </h2>
+              <p className="text-[12.5px] text-[#78618C] text-center leading-relaxed max-w-[340px]">
+                Automate dispatch, validate business rules, and keep vehicles and drivers in sync throughout every trip.
+              </p>
+            </div>
           </div>
 
-          <div className="relative z-10 text-center px-12">
-            <div className="mb-6 inline-flex p-5 bg-white/10 backdrop-blur-md rounded-full border border-white/20 shadow-2xl">
-              <Route className="text-white h-12 w-12" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Efficient Logistics</h2>
-            <p className="text-purple-100/85 leading-relaxed text-xs">
-              Manage your entire fleet, drivers, and real-time transit operations with the most intuitive SaaS platform.
-            </p>
-            <div className="mt-8 flex gap-2 justify-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-              <div className="w-1.5 h-1.5 rounded-full bg-white/30"></div>
-              <div className="w-1.5 h-1.5 rounded-full bg-white/30"></div>
+          {/* Bottom Wave with Pagination Dots */}
+          <div className="absolute bottom-0 left-0 w-full h-[80px] overflow-hidden pointer-events-none">
+            <svg className="absolute inset-0 w-full h-full text-[#5C3C55] fill-current" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path d="M0,0 Q50,42 100,0 L100,100 L0,100 Z" />
+            </svg>
+            <div className="absolute bottom-5 left-0 w-full flex justify-center gap-2.5 z-10 pointer-events-auto">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setCurrentSlide(1); }}
+                className={`w-2 h-2 rounded-full transition-all ${currentSlide === 1 ? 'bg-white scale-110' : 'bg-white/40 hover:bg-white/60'}`} 
+              />
+              <button 
+                className="w-2 h-2 rounded-full bg-white/20 cursor-not-allowed" 
+                disabled
+              />
+              <button 
+                onClick={(e) => { e.stopPropagation(); setCurrentSlide(3); }}
+                className={`w-2 h-2 rounded-full transition-all ${currentSlide === 3 ? 'bg-white scale-110' : 'bg-white/40 hover:bg-white/60'}`} 
+              />
             </div>
           </div>
-
-          {/* Background Decorative Blurs */}
-          <div className="absolute -bottom-16 -right-16 w-64 h-64 bg-[#00A09D] rounded-full blur-[80px] opacity-30"></div>
-          <div className="absolute -top-16 -left-16 w-64 h-64 bg-white rounded-full blur-[100px] opacity-10"></div>
         </div>
 
       </div>
