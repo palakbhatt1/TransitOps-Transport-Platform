@@ -4,8 +4,8 @@ from app.routers import auth, vehicles, drivers, trips, maintenance, dashboard, 
 
 from app.database.database import Base, engine, SessionLocal
 import app.models.models
-from app.models.models import VehicleDB, DriverDB, TripDB, MaintenanceLogDB
-from app.mock_db import mock_vehicles_db, mock_drivers_db, mock_trips_db, mock_maintenance_db
+from app.models.models import VehicleDB, DriverDB, TripDB, MaintenanceLogDB, FuelLogDB, ExpenseDB
+from app.mock_db import mock_vehicles_db, mock_drivers_db, mock_trips_db, mock_maintenance_db, mock_fuel_db, mock_expenses_db
 
 # Auto-create tables
 Base.metadata.create_all(bind=engine)
@@ -27,6 +27,7 @@ try:
                 status=v.status.value
             )
             db.add(db_v)
+        db.flush()
         
         for d in mock_drivers_db:
             db_d = DriverDB(
@@ -40,6 +41,7 @@ try:
                 status=d.status.value
             )
             db.add(db_d)
+        db.flush()
             
         for t in mock_trips_db:
             db_t = TripDB(
@@ -65,6 +67,29 @@ try:
                 closed_at=m.closed_at
             )
             db.add(db_m)
+            
+        for f in mock_fuel_db:
+            db_f = FuelLogDB(
+                id=f.id,
+                vehicle_id=f.vehicle_id,
+                liters=f.liters,
+                cost=f.cost,
+                odometer=f.odometer,
+                date=f.date,
+                notes=f.notes
+            )
+            db.add(db_f)
+            
+        for e in mock_expenses_db:
+            db_e = ExpenseDB(
+                id=e.id,
+                vehicle_id=e.vehicle_id,
+                category=e.category,
+                cost=e.cost,
+                date=e.date,
+                notes=e.notes
+            )
+            db.add(db_e)
             
         db.commit()
 finally:

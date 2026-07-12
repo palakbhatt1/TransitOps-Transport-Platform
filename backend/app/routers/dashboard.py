@@ -40,3 +40,13 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
         drivers_on_duty=drivers_on_duty,
         fleet_utilization_pct=fleet_utilization_pct
     )
+
+@router.get("/db-status")
+def get_db_status(db: Session = Depends(get_db)):
+    """Return the currently active database type (sqlite or postgresql)."""
+    try:
+        dialect = db.bind.dialect.name
+    except Exception:
+        dialect = "unknown"
+    return {"database_type": dialect}
+
