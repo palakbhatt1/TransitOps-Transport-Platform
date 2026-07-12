@@ -237,7 +237,10 @@ export const client = {
         setMockData('transitops_trips', trips);
         return newTrip;
       }
-      const res = await api.post('/trips', data);
+      const res = await api.post('/trips', {
+        ...data,
+        status: data.status || TripStatus.DRAFT
+      });
       return res.data;
     },
     dispatch: async (id) => {
@@ -360,7 +363,10 @@ export const client = {
 
         return newLog;
       }
-      const res = await api.post('/maintenance', data);
+      const res = await api.post('/maintenance', {
+        ...data,
+        opened_at: data.opened_at || new Date().toISOString()
+      });
       return res.data;
     },
     closeLog: async (id, cost) => {

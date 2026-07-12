@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, ShieldAlert } from 'lucide-react';
+import { Plus, Check, ShieldAlert, Filter, List, LayoutGrid, Info } from 'lucide-react';
 import { client } from '../api/client';
 import { Role } from '../api/contracts';
 import { useToast } from '../components/Toast';
-import DataTable from '../components/DataTable';
-import Modal from '../components/Modal';
 
 export default function Maintenance() {
   const toast = useToast();
@@ -12,51 +10,29 @@ export default function Maintenance() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState('');
-
-  // Modal states
-  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-  const [isCloseOpen, setIsCloseOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [formStatus, setFormStatus] = useState('active'); // 'active' | 'completed'
   const [selectedLog, setSelectedLog] = useState(null);
-
-  // Form states
-  const [formData, setFormData] = useState({
-    vehicle_id: '',
-    service_type: '',
-    cost: 0
-  });
-
   const [closeCost, setCloseCost] = useState('');
+  const [formData, setFormData] = useState({ vehicle_id: '', service_type: '', cost: '', scheduled_date: '', notes: '' });
 
   const loadData = async () => {
     try {
-      const [lData, vData] = await Promise.all([
-        client.maintenance.getAll(),
-        client.vehicles.getAll()
-      ]);
-      setLogs(lData);
-      setVehicles(vData);
-    } catch (err) {
-      toast.error('Failed to load maintenance records');
-    } finally {
-      setLoading(false);
-    }
+      const [lData, vData] = await Promise.all([client.maintenance.getAll(), client.vehicles.getAll()]);
+      setLogs(lData); setVehicles(vData);
+    } catch (err) { toast.error('Failed to load maintenance records'); } finally { setLoading(false); }
   };
 
   useEffect(() => {
     loadData();
     const user = client.auth.getCurrentUser();
-    if (user) {
-      setUserRole(user.role);
-    }
-
-    const handleAuthChange = () => {
-      const u = client.auth.getCurrentUser();
-      if (u) setUserRole(u.role);
-    };
+    if (user) setUserRole(user.role);
+    const handleAuthChange = () => { const u = client.auth.getCurrentUser(); if (u) setUserRole(u.role); };
     window.addEventListener('auth-change', handleAuthChange);
     return () => window.removeEventListener('auth-change', handleAuthChange);
   }, []);
 
+<<<<<<< Updated upstream
   const canSchedule = userRole === Role.FLEET_MANAGER || userRole === Role.SAFETY_OFFICER;
   const canClose = userRole === Role.FLEET_MANAGER;
 
@@ -87,73 +63,65 @@ export default function Maintenance() {
   };
 
   const handleSubmitSchedule = async (e) => {
-    e.preventDefault();
-    try {
-      await client.maintenance.create(formData);
-      toast.success('Service log opened. Vehicle status set to In Shop.');
-      setIsScheduleOpen(false);
-      loadData();
-      window.dispatchEvent(new Event('data-changed'));
-    } catch (err) {
-      toast.error('Failed to schedule service.');
-    }
+=======
+  const isEditable = userRole === Role.FLEET_MANAGER;
+  const activeVehicles = vehicles.filter(v => v.status !== 'retired');
+
+  const handleOpenForm = () => {
+    if (!isEditable) { toast.error('Access Denied: Only Fleet Managers can schedule maintenance.'); return; }
+    setFormData({ vehicle_id: activeVehicles[0]?.id || '', service_type: '', cost: '', scheduled_date: '', notes: '' });
+    setFormStatus('active');
+    setShowForm(true);
   };
 
-  const handleSubmitClose = async (e) => {
+  const handleSubmit = async (e) => {
+>>>>>>> Stashed changes
     e.preventDefault();
     try {
-      const costVal = parseFloat(closeCost) || 0;
-      await client.maintenance.closeLog(selectedLog.id, costVal);
-      toast.success('Maintenance completed. Vehicle returned to Available pool.');
-      setIsCloseOpen(false);
-      loadData();
-      window.dispatchEvent(new Event('data-changed'));
-    } catch (err) {
-      toast.error('Failed to close maintenance log.');
-    }
+      await client.maintenance.create({ vehicle_id: formData.vehicle_id, service_type: formData.service_type, cost: parseFloat(formData.cost) || 0 });
+      toast.success('Maintenance record created. Vehicle status set to In Shop.');
+      setShowForm(false); loadData(); window.dispatchEvent(new Event('data-changed'));
+    } catch (err) { toast.error(err.message || 'Failed to create record.'); }
   };
 
-  const getVehicleReg = (id) => vehicles.find(v => v.id === id)?.registration_number || id;
+  const handleClose = async (log) => {
+    if (!isEditable) { toast.error('Access Denied.'); return; }
+    try {
+      await client.maintenance.closeLog(log.id, parseFloat(closeCost) || log.cost);
+      toast.success('Maintenance record closed.'); setSelectedLog(null); loadData(); window.dispatchEvent(new Event('data-changed'));
+    } catch (err) { toast.error('Failed to close record.'); }
+  };
 
-  const columns = [
-    { header: 'Log ID', accessor: 'id', sortable: true },
-    { header: 'Vehicle', accessor: (row) => getVehicleReg(row.vehicle_id) },
-    { header: 'Service Type', accessor: 'service_type', sortable: true },
-    { header: 'Cost ($)', accessor: (row) => `$${row.cost.toLocaleString()}`, sortable: true },
-    { 
-      header: 'Opened At', 
-      accessor: (row) => new Date(row.opened_at).toLocaleString(),
-      sortable: true 
-    },
-    { 
-      header: 'Closed At', 
-      accessor: (row) => row.closed_at ? (
-        new Date(row.closed_at).toLocaleString()
-      ) : (
-        <span className="text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-          OPEN
-        </span>
-      ),
-      sortable: true 
-    }
-  ];
+  const getVehicleLabel = (id) => { const v = vehicles.find(v => v.id === id); return v ? `${v.registration_number} (${v.model})` : id; };
+  const getLogStatus = (log) => log.closed_at ? 'completed' : 'active';
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  const statusDot = (status) => {
+    const map = { active: 'bg-orange-400', completed: 'bg-green-500', overdue: 'bg-red-500' };
+    return <span className={`inline-block w-2 h-2 rounded-full ${map[status] || 'bg-gray-300'} mr-2`} />;
+  };
+
+  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><div className="w-8 h-8 border-4 border-[#714B67] border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 font-sans">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-100 m-0">Maintenance Log</h1>
-          <p className="text-sm text-zinc-400 mt-1">Schedule and audit shop operations, maintenance costs, and garage stays.</p>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-800 m-0">Maintenance Logs</h1>
+          <div className="flex border border-[#E2E8F0] rounded overflow-hidden bg-white shadow-sm">
+            <button className="px-3 py-1.5 bg-gray-100 border-r border-[#E2E8F0]"><List className="h-4 w-4 text-gray-600" /></button>
+            <button className="px-3 py-1.5 hover:bg-gray-50"><LayoutGrid className="h-4 w-4 text-gray-400" /></button>
+          </div>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border border-[#E2E8F0] bg-white rounded px-3 py-1.5 gap-2 text-sm text-gray-600 shadow-sm">
+            <Filter className="h-3.5 w-3.5 text-gray-400" /><span>Filters</span>
+          </div>
+          <button id="maintenance-new-btn" onClick={handleOpenForm} className={`flex items-center gap-2 px-5 py-2 bg-[#714B67] hover:bg-[#5D3E55] text-white rounded-[6px] text-sm font-medium shadow-sm transition-all ${!isEditable ? 'opacity-40 cursor-not-allowed' : ''}`}>
+            <Plus className="h-4 w-4" />New
+          </button>
+        </div>
+<<<<<<< Updated upstream
         <button
           onClick={handleOpenSchedule}
           className={`flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-violet-500/20 transition-all ${
@@ -180,10 +148,19 @@ export default function Maintenance() {
           <div>
             <span className="font-semibold">Read-Only View:</span> Scheduling repairs and finishing service entries require Fleet Manager or Safety Officer credentials.
           </div>
+=======
+      </div>
+
+      {!isEditable && (
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 p-4 rounded-[6px] flex items-center gap-3 text-sm">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          <div><span className="font-semibold">Read-Only Access:</span> Only Fleet Managers can create or close maintenance records.</div>
+>>>>>>> Stashed changes
         </div>
       )}
 
       {/* Logs Table */}
+<<<<<<< Updated upstream
       <DataTable
         columns={columns}
         data={logs}
@@ -225,98 +202,120 @@ export default function Maintenance() {
                 <option key={v.id} value={v.id}>
                   {v.registration_number} - {v.model} ({v.status.toUpperCase()})
                 </option>
+=======
+      <div className="bg-white rounded-[6px] shadow-sm border border-[#E2E8F0] overflow-hidden">
+        <table className="w-full text-left text-[14px]">
+          <thead>
+            <tr className="bg-[#F8F9FA] border-b border-[#E2E8F0] text-gray-500 uppercase text-[11px] tracking-wider">
+              {['Vehicle', 'Service Type', 'Cost', 'Date', 'Status', ...(isEditable ? [''] : [])].map(h => (
+                <th key={h} className={`px-6 py-3 font-bold ${h === 'Cost' ? 'text-right' : ''}`}>{h}</th>
+>>>>>>> Stashed changes
               ))}
-            </select>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {logs.length === 0 ? (
+              <tr><td colSpan="6" className="text-center py-10 text-gray-400 text-sm">No maintenance records found.</td></tr>
+            ) : logs.map(log => {
+              const status = getLogStatus(log);
+              return (
+              <tr key={log.id} className="hover:bg-[#F8F9FA] transition-colors cursor-pointer" onClick={() => { if (isEditable && status === 'active') { setSelectedLog(log); setCloseCost(log.cost); } }}>
+                <td className="px-6 py-4 font-medium text-[#714B67]">{getVehicleLabel(log.vehicle_id)}</td>
+                <td className="px-6 py-4 text-gray-600">{log.service_type}</td>
+                <td className="px-6 py-4 text-right font-medium">${parseFloat(log.cost).toFixed(2)}</td>
+                <td className="px-6 py-4 text-gray-500 text-sm">{new Date(log.opened_at || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center">
+                    {statusDot(status)}
+                    <span className="text-xs capitalize">{status}</span>
+                  </div>
+                </td>
+                {isEditable && (
+                  <td className="px-6 py-4 text-right">
+                    {status === 'active' && (
+                      <button onClick={(e) => { e.stopPropagation(); setSelectedLog(log); setCloseCost(log.cost); }} className="px-3 py-1 text-xs font-semibold text-[#00A09D] border border-[#00A09D] rounded hover:bg-teal-50 transition-colors flex items-center gap-1">
+                        <Check className="h-3 w-3" /> Close
+                      </button>
+                    )}
+                  </td>
+                )}
+              </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Inline New Record Form */}
+      {showForm && (
+        <div className="bg-white rounded-[6px] shadow-sm border border-[#E2E8F0] overflow-hidden">
+          <div className="bg-gray-50 px-6 py-3 border-b border-[#E2E8F0] flex justify-between items-center">
+            <h3 className="text-sm font-semibold text-gray-700">New Maintenance Record</h3>
+            <div className="flex gap-1">
+              {['active', 'completed'].map(s => (
+                <button key={s} onClick={() => setFormStatus(s)} className={`px-3 py-1 text-[11px] font-bold uppercase rounded-full border transition-all ${formStatus === s ? 'bg-[#714B67] text-white border-[#714B67]' : 'text-gray-500 border-gray-300 bg-transparent hover:bg-gray-50'}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-zinc-400 uppercase">Service Type / Description</label>
-            <input
-              type="text"
-              value={formData.service_type}
-              onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
-              placeholder="e.g. Engine Overhaul, Brake Pad Replacement"
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-lg text-sm focus:outline-none focus:border-violet-500"
-              required
-            />
+          <div className="bg-blue-50 border-b border-blue-100 p-3 flex items-center gap-3 text-[13px] text-blue-800">
+            <Info className="h-4 w-4 text-blue-500" />
+            <p>Creating an active record sets vehicle status to <strong>In Shop</strong></p>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-zinc-400 uppercase">Estimated Cost ($)</label>
-            <input
-              type="number"
-              value={formData.cost}
-              onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-lg text-sm focus:outline-none focus:border-violet-500"
-              min="0"
-              step="0.01"
-              required
-            />
-          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Vehicle</label>
+                <select value={formData.vehicle_id} onChange={e => setFormData({ ...formData, vehicle_id: e.target.value })} className="border-0 border-b border-gray-200 bg-transparent py-2 text-[14px] text-gray-800 focus:outline-none focus:border-[#714B67] focus:border-b-2 transition-all w-full appearance-none" required>
+                  <option value="" disabled>Select vehicle...</option>
+                  {activeVehicles.map(v => <option key={v.id} value={v.id}>{v.registration_number} ({v.model})</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Service Type</label>
+                <input type="text" value={formData.service_type} onChange={e => setFormData({ ...formData, service_type: e.target.value })} placeholder="e.g. Engine Repair" className="border-0 border-b border-gray-200 bg-transparent py-2 text-[14px] text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#714B67] focus:border-b-2 transition-all w-full" required />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Estimated Cost</label>
+                <input type="number" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })} placeholder="$ 0.00" className="border-0 border-b border-gray-200 bg-transparent py-2 text-[14px] text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#714B67] focus:border-b-2 transition-all w-full" min="0" step="0.01" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Scheduled Date</label>
+                <input type="date" value={formData.scheduled_date} onChange={e => setFormData({ ...formData, scheduled_date: e.target.value })} className="border-0 border-b border-gray-200 bg-transparent py-2 text-[14px] text-gray-800 focus:outline-none focus:border-[#714B67] focus:border-b-2 transition-all w-full" />
+              </div>
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Detailed Notes</label>
+                <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Describe service details..." rows="3" className="border-0 border-b border-gray-200 bg-transparent py-2 text-[14px] text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#714B67] focus:border-b-2 transition-all w-full resize-none" />
+              </div>
+            </div>
+            <div className="px-8 py-4 bg-gray-50 flex gap-2 justify-end border-t border-[#E2E8F0]">
+              <button type="button" onClick={() => setShowForm(false)} className="px-5 py-2 bg-white text-[#714B67] border border-[#714B67] rounded-[6px] text-sm font-medium hover:bg-purple-50 transition-colors">Discard</button>
+              <button type="submit" className="px-5 py-2 bg-[#714B67] text-white rounded-[6px] text-sm font-medium hover:opacity-90 transition-opacity">Save Record</button>
+            </div>
+          </form>
+        </div>
+      )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setIsScheduleOpen(false)}
-              className="px-4 py-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-850 text-sm font-semibold rounded-lg text-zinc-300 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-violet-500/10 transition-colors"
-            >
-              Dispatch to Shop
-            </button>
+      {/* Close Record Overlay */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[12px] border border-[#E2E8F0] shadow-2xl p-8 w-full max-w-md">
+            <h3 className="text-lg font-bold text-[#714B67] mb-2">Close Maintenance Record</h3>
+            <p className="text-sm text-gray-500 mb-6">{getVehicleLabel(selectedLog.vehicle_id)} – {selectedLog.service_type}</p>
+            <div className="flex flex-col gap-1.5 mb-6">
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Final Cost ($)</label>
+              <input type="number" value={closeCost} onChange={e => setCloseCost(e.target.value)} className="border-0 border-b border-gray-200 bg-transparent py-2 text-[15px] text-gray-800 focus:outline-none focus:border-[#714B67] focus:border-b-2 transition-all w-full" min="0" step="0.01" />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setSelectedLog(null)} className="px-6 py-2 bg-white border border-gray-300 text-gray-600 rounded-[6px] text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={() => handleClose(selectedLog)} className="px-6 py-2 bg-[#00A09D] text-white rounded-[6px] text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"><Check className="h-4 w-4" />Close Record</button>
+            </div>
           </div>
-        </form>
-      </Modal>
-
-      {/* Close Service Modal */}
-      <Modal
-        isOpen={isCloseOpen}
-        onClose={() => setIsCloseOpen(false)}
-        title="Complete Vehicle Service"
-      >
-        <form onSubmit={handleSubmitClose} className="space-y-4">
-          <p className="text-sm text-zinc-400">
-            Provide the final invoice cost for resolving the service on{' '}
-            <span className="font-semibold text-zinc-200">
-              {selectedLog && getVehicleReg(selectedLog.vehicle_id)}
-            </span>
-            .
-          </p>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-zinc-400 uppercase">Final Cost ($)</label>
-            <input
-              type="number"
-              value={closeCost}
-              onChange={(e) => setCloseCost(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-lg text-sm focus:outline-none focus:border-violet-500"
-              min="0"
-              step="0.01"
-              required
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setIsCloseOpen(false)}
-              className="px-4 py-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-850 text-sm font-semibold rounded-lg text-zinc-300 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-emerald-500/10 transition-colors"
-            >
-              Finalize Log
-            </button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+      )}
     </div>
   );
 }

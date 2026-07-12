@@ -11,6 +11,9 @@ import Vehicles from './pages/Vehicles';
 import Drivers from './pages/Drivers';
 import Trips from './pages/Trips';
 import Maintenance from './pages/Maintenance';
+import Expenses from './pages/Expenses';
+import Analytics from './pages/Analytics';
+import Settings from './pages/Settings';
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }) {
@@ -21,13 +24,7 @@ function ProtectedRoute({ children }) {
   return <AppLayout>{children}</AppLayout>;
 }
 
-// Simple stubs for other pages
-const PlaceholderPage = ({ title }) => (
-  <div>
-    <h1 className="text-3xl font-bold text-zinc-100">{title}</h1>
-    <p className="text-sm text-zinc-400 mt-2">This module is under active construction.</p>
-  </div>
-);
+
 
 export default function App() {
   return (
@@ -65,17 +62,17 @@ export default function App() {
           } />
           <Route path="/expenses" element={
             <ProtectedRoute>
-              <PlaceholderPage title="Fuel & Expenses" />
+              <Expenses />
             </ProtectedRoute>
           } />
           <Route path="/analytics" element={
             <ProtectedRoute>
-              <PlaceholderPage title="Analytics" />
+              <Analytics />
             </ProtectedRoute>
           } />
           <Route path="/settings" element={
             <ProtectedRoute>
-              <PlaceholderPage title="Settings" />
+              <Settings />
             </ProtectedRoute>
           } />
 
