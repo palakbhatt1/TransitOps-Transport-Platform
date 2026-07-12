@@ -185,7 +185,15 @@ export default function Trips() {
       </div>
 
       {/* RBAC Warning banner */}
-      {!isDispatcher && (
+      {userRole === Role.DRIVER && (
+        <div className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 p-4 rounded-xl flex items-center gap-3 text-sm">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          <div>
+            <span className="font-semibold">Driver Access:</span> You can view assignments and update dispatched trip statuses (Complete/Cancel). Draft trip creation is locked.
+          </div>
+        </div>
+      )}
+      {!isDispatcher && userRole !== Role.DRIVER && (
         <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl flex items-center gap-3 text-sm">
           <ShieldAlert className="h-5 w-5 shrink-0" />
           <div>
@@ -200,9 +208,9 @@ export default function Trips() {
         data={trips}
         searchKey="destination"
         searchPlaceholder="Search trips by destination..."
-        actions={isDispatcher ? (row) => (
+        actions={(isDispatcher || userRole === Role.DRIVER) ? (row) => (
           <div className="flex justify-end gap-2">
-            {row.status === TripStatus.DRAFT && (
+            {row.status === TripStatus.DRAFT && isDispatcher && (
               <>
                 <button
                   onClick={() => handleDispatch(row.id)}
@@ -219,6 +227,9 @@ export default function Trips() {
                   <XCircle className="h-4 w-4" />
                 </button>
               </>
+            )}
+            {row.status === TripStatus.DRAFT && !isDispatcher && (
+              <span className="text-xs text-zinc-500 pr-2 italic">Draft (Locked)</span>
             )}
             {row.status === TripStatus.DISPATCHED && (
               <>
