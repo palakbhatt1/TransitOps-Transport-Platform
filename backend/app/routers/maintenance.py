@@ -13,6 +13,27 @@ def get_maintenance_logs():
 
 @router.post("/", response_model=MaintenanceLog)
 def open_maintenance_log(log: MaintenanceLogBase):
+    # Strict input validations
+    if not log.service_type.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_SERVICE_TYPE",
+                "message": "Service type cannot be empty or blank space",
+                "field": "service_type"
+            }
+        )
+    if log.cost < 0:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "code": "INVALID_COST",
+                "message": "Maintenance cost cannot be negative",
+                "field": "cost"
+            }
+        )
     # Verify vehicle exists
     vehicle = next((v for v in mock_vehicles_db if v.id == log.vehicle_id), None)
     if not vehicle:
